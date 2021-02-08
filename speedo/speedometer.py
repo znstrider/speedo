@@ -25,7 +25,7 @@ def rotate(angle):
 class Speedometer:
     """
     draws a Speedometer Chart
-    
+
     Args:
     center (tuple): (x, y)-Position of the center
     start_value (float): Start of the range of values plotted
@@ -64,7 +64,7 @@ class Speedometer:
     rotate_labels (bool) = False: whether to rotate the value labels
     fade_hatch (str) = None: hatch string, ie 'xxx' for all wedges > value
     ax (matplotlib.axes._subplots object) = None: Axes to draw the speedometer onto. None defaults to plt.gca()
-    
+
     """
     def __init__(self,
                  center,
@@ -73,8 +73,8 @@ class Speedometer:
                  value,
                  radius=4,
                  width_ratio=1/4,
-                 colors = ["#d7191c","#fdae61","#ffffbf","#abd9e9","#2c7bb6"],
-                 segments_per_color = 5,
+                 colors=["#d7191c", "#fdae61", "#ffffbf", "#abd9e9", "#2c7bb6"],
+                 segments_per_color=5,
                  start_angle=-30,
                  end_angle=210,
                  arc_edgecolor=None,
@@ -104,34 +104,34 @@ class Speedometer:
                  rotate_labels=False,
                  fade_hatch=None,
                  ax=None
-                ):
-        
+                 ):
+
         self.ax = ax or plt.gca()
-        
+
         self.radius = radius
         self.center = center
         self.start_value = start_value
         self.end_value = end_value
         self.value = value
         self.width_ratio = width_ratio
-        
+
         if arc_edgecolor is None:
             self.arc_edgecolor = self.ax.get_facecolor()
-            
+
         self.label_fontsize = label_fontsize
-        
+
         self.title = title
-        
+
         if title_fontcolor is None:
             self.title_fontcolor = mpl.rcParams['axes.labelcolor']
         else:
             self.title_fontcolor = title_fontcolor
-        
+
         if title_facecolor is None:
             self.title_facecolor = self.ax.get_facecolor()
         else:
             self.title_facecolor = title_facecolor
-            
+
         if title_edgecolor is None:
             self.title_edgecolor = self.ax.get_facecolor()
         else:
@@ -140,40 +140,40 @@ class Speedometer:
         self.title_offset = title_offset
         self.title_pad = title_pad
         self.title_fontsize = title_fontsize
-        
+
         if annotation_fontcolor is None:
             self.annotation_fontcolor = mpl.rcParams['axes.labelcolor']
         else:
             self.annotation_fontcolor = annotation_fontcolor
-            
+
         if annotation_facecolor is None:
             self.annotation_facecolor = self.ax.get_facecolor()
         else:
             self.annotation_facecolor = annotation_facecolor
-            
+
         if annotation_edgecolor is None:
             self.annotation_edgecolor = self.ax.get_facecolor()
         else:
             self.annotation_edgecolor = annotation_edgecolor
-            
+
         self.annotation_offset = annotation_offset
         self.annotation_pad = annotation_pad
         self.annotation_fontsize = annotation_fontsize
-        
+
         if unit is None:
             self.unit = ''
         else:
             self.unit = unit
-        
+
         if label_fontcolor is None:
             self.label_fontcolor = mpl.rcParams['axes.labelcolor']
         else:
             self.label_fontcolor = label_fontcolor
-        
+
         self.fade_alpha = fade_alpha
         self.fade_hatch = fade_hatch
         self.patch_lw = patch_lw
-        
+
         self.n_colors = len(colors)
 
         self.colors = np.repeat(colors, segments_per_color)
@@ -187,10 +187,10 @@ class Speedometer:
             for i, l in zip(range(0, segments_per_color*self.n_colors, segments_per_color+1),
                             np.linspace(self.start_value, self.end_value, self.n_colors, endpoint=True)):
                 self.labels[i] = l
-            
+
         else:
             self.labels = labels
-            
+
         N = len(self.colors)
 
         angle_range, mid_points = degree_range(N, start=start_angle, end=end_angle)
@@ -207,12 +207,12 @@ class Speedometer:
 
             # Wedges
             self.patches.append(Wedge(self.center, self.radius, *ang, width=self.width_ratio*self.radius,
-                                 facecolor=c, edgecolor=self.arc_edgecolor, lw=self.patch_lw, alpha=alpha, hatch=hatch))
+                                      facecolor=c, edgecolor=self.arc_edgecolor, lw=self.patch_lw, alpha=alpha, hatch=hatch))
             # Wedges with just an edgecolor (alpha edgecolor issues)
-            self.patches.append(Wedge(self.center, self.radius, *ang, width=self.width_ratio*self.radius, facecolor='None', edgecolor=arc_edgecolor, lw=patch_lw))
+            self.patches.append(Wedge(self.center, self.radius, *ang, width=self.width_ratio*self.radius,
+                                      facecolor='None', edgecolor=self.arc_edgecolor, lw=patch_lw))
 
-        [self.ax.add_patch(p) for p in self.patches];
-
+        [self.ax.add_patch(p) for p in self.patches]
 
         if draw_labels:
             for mid, label in zip(mid_points, self.labels[-1::-1]):
@@ -224,7 +224,7 @@ class Speedometer:
                         adj = -90
                 else:
                     radius_factor = 0.65
-                    if (mid < 0)|(mid > 180):
+                    if (mid < 0) | (mid > 180):
                         adj = 180
                     else:
                         adj = 0
@@ -233,12 +233,11 @@ class Speedometer:
                     label = label[:-2]
 
                 self.ax.text(self.center[0] + radius_factor * self.radius * np.cos(np.radians(mid)),
-                        self.center[1] + radius_factor * self.radius * np.sin(np.radians(mid)),
-                        label, horizontalalignment='center', verticalalignment='center', fontsize=label_fontsize,
-                        fontweight='bold', color=self.label_fontcolor, rotation = rotate(mid) + adj,
-                        bbox={'facecolor': self.arc_edgecolor, 'ec': 'None', 'pad': 0},
-                        zorder=10)
-
+                             self.center[1] + radius_factor * self.radius * np.sin(np.radians(mid)),
+                             label, horizontalalignment='center', verticalalignment='center', fontsize=label_fontsize,
+                             fontweight='bold', color=self.label_fontcolor, rotation=rotate(mid) + adj,
+                             bbox={'facecolor': self.arc_edgecolor, 'ec': 'None', 'pad': 0},
+                             zorder=10)
 
         # Arrow
         if snap_to_pos:
@@ -260,13 +259,13 @@ class Speedometer:
             else:
                 self.annotation_text = annotation_text
             # Bottom Annotation
-            self.annotation = self.ax.text(self.center[0], self.center[1] - self.annotation_offset * self.radius, self.annotation_text, horizontalalignment='center', \
-                                      verticalalignment='center', fontsize=self.annotation_fontsize, fontweight='bold', color = self.annotation_fontcolor,
-                                      bbox={'facecolor': self.annotation_facecolor, 'edgecolor': self.annotation_edgecolor, 'pad': self.annotation_pad},
-                                      zorder=11)
-        if title is not None:
+            self.annotation = self.ax.text(self.center[0], self.center[1] - self.annotation_offset * self.radius, self.annotation_text, horizontalalignment='center',
+                                           verticalalignment='center', fontsize=self.annotation_fontsize, fontweight='bold', color=self.annotation_fontcolor,
+                                           bbox={'facecolor': self.annotation_facecolor, 'edgecolor': self.annotation_edgecolor, 'pad': self.annotation_pad},
+                                           zorder=11)
         # Title Annotation
-            self.title_annotation = self.ax.text(self.center[0], self.center[1] + self.title_offset * self.radius, self.title, horizontalalignment='center', \
-                                  verticalalignment='center', fontsize=self.title_fontsize, fontweight='bold', color = self.title_fontcolor,
-                                  bbox={'facecolor': self.title_facecolor, 'edgecolor': self.title_edgecolor, 'pad': self.title_pad},
-                                  zorder=11)
+        if title is not None:
+            self.title_annotation = self.ax.text(self.center[0], self.center[1] + self.title_offset * self.radius, self.title, horizontalalignment='center',
+                                                 verticalalignment='center', fontsize=self.title_fontsize, fontweight='bold', color=self.title_fontcolor,
+                                                 bbox={'facecolor': self.title_facecolor, 'edgecolor': self.title_edgecolor, 'pad': self.title_pad},
+                                                 zorder=11)
