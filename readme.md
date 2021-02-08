@@ -13,7 +13,7 @@ change "from speedo.speedometer import Speedometer"
 to "speedo.speedo.speedometer import Speedometer" below.
 
 
-```
+```python
 ### Example
 
 import matplotlib.pyplot as plt
