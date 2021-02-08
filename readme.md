@@ -2,7 +2,7 @@ A class to plot speedometer (and gauge) plots
 
 
 ### Installation
-````
+```
 # 1) Download the package
 cd speedo # or the path you saved it to
 pip install .
@@ -24,7 +24,6 @@ from speedo.speedometer import Speedometer
 import themepy
 
 theme = themepy.Theme('dark')
-
 plt.rcParams['axes.grid'] = False
             
 fig, ax = plt.subplots(1, 3, figsize=(16, 4))
