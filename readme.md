@@ -8,8 +8,8 @@ cd speedo # or the path you saved it to
 pip install .
 ```
 
-if you only download
-change "from speedo.speedometer import Speedometer"
+if you only download  
+change "from speedo.speedometer import Speedometer"  
 to "speedo.speedo.speedometer import Speedometer" below.
 
 
