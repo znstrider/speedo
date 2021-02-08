@@ -1,0 +1,1 @@
+A class to plot speedometer (and gauge) plots
