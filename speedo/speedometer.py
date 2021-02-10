@@ -103,8 +103,7 @@ class Speedometer:
                  labels=None,
                  rotate_labels=False,
                  fade_hatch=None,
-                 ax=None
-                 ):
+                 ax=None):
 
         self.ax = ax or plt.gca()
 
@@ -114,9 +113,15 @@ class Speedometer:
         self.end_value = end_value
         self.value = value
         self.width_ratio = width_ratio
+        self.start_angle = start_angle
+        self.end_angle = end_angle
+
+        self.snap_to_pos = snap_to_pos
 
         if arc_edgecolor is None:
             self.arc_edgecolor = self.ax.get_facecolor()
+        else:
+            self.arc_edgecolor = arc_edgecolor
 
         self.label_fontsize = label_fontsize
 
@@ -136,6 +141,8 @@ class Speedometer:
             self.title_edgecolor = self.ax.get_facecolor()
         else:
             self.title_edgecolor = title_edgecolor
+
+        self.annotation_text = annotation_text
 
         self.title_offset = title_offset
         self.title_pad = title_pad
@@ -177,15 +184,16 @@ class Speedometer:
         self.n_colors = len(colors)
 
         self.colors = np.repeat(colors, segments_per_color)
-        self.midpoints = np.linspace(self.start_value, self.end_value, segments_per_color*self.n_colors, endpoint=True)
+        self.midpoint_values = np.linspace(self.start_value, self.end_value, segments_per_color*self.n_colors, endpoint=True)
+        self.edge_values = np.linspace(self.start_value, self.end_value, segments_per_color*self.n_colors+1, endpoint=True)
 
-        arrow_index = np.argmin(abs(self.midpoints - self.value))
-        self.arrow_value = self.midpoints[arrow_index]
+        self.arrow_index = np.argmin(abs(self.midpoint_values - self.value))
+        self.arrow_value = self.midpoint_values[self.arrow_index]
 
         if labels is None:
-            self.labels = np.empty_like(self.colors)
-            for i, l in zip(range(0, segments_per_color*self.n_colors, segments_per_color+1),
-                            np.linspace(self.start_value, self.end_value, self.n_colors, endpoint=True)):
+            self.labels = ['' for i in range(len(self.colors)+1)]
+            for i, l in zip(range(0, segments_per_color*self.n_colors+1, segments_per_color),
+                            np.linspace(self.start_value, self.end_value, self.n_colors+1, endpoint=True)):
                 self.labels[i] = l
 
         else:
@@ -193,12 +201,13 @@ class Speedometer:
 
         N = len(self.colors)
 
-        angle_range, mid_points = degree_range(N, start=start_angle, end=end_angle)
+        self.angle_range, self.midpoints = degree_range(N, start=start_angle, end=end_angle)
+        self.annotation_angles = np.concatenate([self.angle_range[:, 0], self.angle_range[-1:, 1]])
 
         # Speedometer Patches
         self.patches = []
-        for ang, c, val in zip(angle_range, self.colors, self.midpoints[-1::-1]):
-            if self.arrow_value < val:
+        for ang, c, val in zip(self.angle_range, self.colors, self.edge_values[-2::-1]): # self.midpoint_values[-1::-1]
+            if self.arrow_value <= val:
                 alpha = self.fade_alpha
                 hatch = self.fade_hatch
             else:
@@ -209,63 +218,108 @@ class Speedometer:
             self.patches.append(Wedge(self.center, self.radius, *ang, width=self.width_ratio*self.radius,
                                       facecolor=c, edgecolor=self.arc_edgecolor, lw=self.patch_lw, alpha=alpha, hatch=hatch))
             # Wedges with just an edgecolor (alpha edgecolor issues)
-            self.patches.append(Wedge(self.center, self.radius, *ang, width=self.width_ratio*self.radius,
-                                      facecolor='None', edgecolor=self.arc_edgecolor, lw=patch_lw))
+            self.patches.append(Wedge(self.center, self.radius, *ang, width=self.width_ratio*self.radius, facecolor='None', edgecolor=self.arc_edgecolor, lw=patch_lw))
 
         [self.ax.add_patch(p) for p in self.patches]
 
         if draw_labels:
-            for mid, label in zip(mid_points, self.labels[-1::-1]):
+            for angle, label in zip(self.annotation_angles, self.labels[-1::-1]):
                 if rotate_labels:
                     radius_factor = 0.625
-                    if mid < 90:
+                    if angle < 90:
                         adj = 90
                     else:
                         adj = -90
                 else:
                     radius_factor = 0.65
-                    if (mid < 0) | (mid > 180):
+                    if (angle < 0) | (angle > 180):
                         adj = 180
                     else:
                         adj = 0
 
-                if label[-2:] == '.0':
-                    label = label[:-2]
+                if type(label) == int:
+                    if label[-2:] == '.0':
+                        label = label[:-2]
 
-                self.ax.text(self.center[0] + radius_factor * self.radius * np.cos(np.radians(mid)),
-                             self.center[1] + radius_factor * self.radius * np.sin(np.radians(mid)),
+                self.ax.text(self.center[0] + radius_factor * self.radius * np.cos(np.radians(angle)),
+                             self.center[1] + radius_factor * self.radius * np.sin(np.radians(angle)),
                              label, horizontalalignment='center', verticalalignment='center', fontsize=label_fontsize,
-                             fontweight='bold', color=self.label_fontcolor, rotation=rotate(mid) + adj,
+                             fontweight='bold', color=self.label_fontcolor, rotation=rotate(angle) + adj,
                              bbox={'facecolor': self.arc_edgecolor, 'ec': 'None', 'pad': 0},
                              zorder=10)
 
-        # Arrow
-        if snap_to_pos:
-            pos = mid_points[-1::-1][(arrow_index - N)]
-        else:
-            deg_range = end_angle - start_angle
-            val_range = end_value - start_value
-            pos = end_angle - (value - start_value) / val_range * deg_range
+        self.set_arrow_angle()
 
-        self.arrow = self.ax.arrow(*self.center, .825 * self.radius * np.cos(np.radians(pos)), .825 * self.radius * np.sin(np.radians(pos)),
+        self.arrow = self.ax.arrow(*self.center,
+                                   .825 * self.radius * np.cos(np.radians(self.arrow_angle)),
+                                   .825 * self.radius * np.sin(np.radians(self.arrow_angle)),
                                    width=self.radius/20, head_width=self.radius/10, head_length=self.radius/15,
                                    fc=self.ax.get_facecolor(), ec=self.label_fontcolor, zorder=9, lw=2)
 
         self.ax.add_patch(Circle(self.center, radius=self.radius/20, facecolor=self.ax.get_facecolor(), edgecolor=self.label_fontcolor, lw=2.5, zorder=10))
 
+        self.set_annotation_text()
+
+        # Bottom Annotation
+        self.annotation = self.ax.text(self.center[0], self.center[1] - self.annotation_offset * self.radius, self.annotation_text, horizontalalignment='center',
+                                       verticalalignment='center', fontsize=self.annotation_fontsize, fontweight='bold', color=self.annotation_fontcolor,
+                                       bbox={'facecolor': self.annotation_facecolor, 'edgecolor': self.annotation_edgecolor, 'pad': self.annotation_pad},
+                                       zorder=11, visible=False)
+
         if draw_annotation:
-            if annotation_text is None:
-                self.annotation_text = f'{self.value}{self.unit}'
-            else:
-                self.annotation_text = annotation_text
-            # Bottom Annotation
-            self.annotation = self.ax.text(self.center[0], self.center[1] - self.annotation_offset * self.radius, self.annotation_text, horizontalalignment='center',
-                                           verticalalignment='center', fontsize=self.annotation_fontsize, fontweight='bold', color=self.annotation_fontcolor,
-                                           bbox={'facecolor': self.annotation_facecolor, 'edgecolor': self.annotation_edgecolor, 'pad': self.annotation_pad},
-                                           zorder=11)
+            self.annotation.set_visible(True)
+
         # Title Annotation
         if title is not None:
+
             self.title_annotation = self.ax.text(self.center[0], self.center[1] + self.title_offset * self.radius, self.title, horizontalalignment='center',
                                                  verticalalignment='center', fontsize=self.title_fontsize, fontweight='bold', color=self.title_fontcolor,
                                                  bbox={'facecolor': self.title_facecolor, 'edgecolor': self.title_edgecolor, 'pad': self.title_pad},
                                                  zorder=11)
+
+    def set_annotation_text(self):
+        if self.annotation_text is None:
+            self.annotation_text = f'{self.value}{self.unit}'
+
+    def set_arrow_angle(self):
+        if self.snap_to_pos:
+            self.arrow_angle = self.midpoints[-1::-1][(self.arrow_index - len(self.colors))]
+        else:
+            self.deg_range = self.end_angle - self.start_angle
+            self.val_range = self.end_value - self.start_value
+            self.arrow_angle = self.end_angle - (self.value - self.start_value) / self.val_range * self.deg_range
+
+    def _rotate(self, arr, theta):
+        """
+        rotates a 2D vector by `theta` degrees in radians counterclockwise.
+        """
+        # Rotation Matrix R
+        R = [[np.cos(theta), -np.sin(theta)], 
+             [np.sin(theta),  np.cos(theta)]]
+
+        return np.matmul(R, arr.T).T
+
+    def update_wedges(self):
+        for bool_, patch, in zip(self.edge_values < self.value,
+                                 self.patches[-2::-2]):
+            if bool_:
+                patch.set_alpha(1)
+                patch.set_hatch('')
+            else:
+                patch.set_alpha(self.fade_alpha)
+                patch.set_hatch(self.fade_hatch)
+
+    def update_arrow_position(self, value):
+
+        self.value = value
+        self.arrow_index = np.argmin(abs(self.midpoint_values - self.value))
+        self.arrow_value = self.midpoint_values[self.arrow_index]
+
+        old_angle = self.arrow_angle
+        self.set_arrow_angle()
+
+        rotation_degrees = self.arrow_angle - old_angle
+
+        self.arrow.set_xy(self._rotate(self.arrow.get_xy(), np.deg2rad(rotation_degrees)))
+        self.annotation.set_text(f'{self.value}{self.unit}')
+        self.update_wedges()
