@@ -1,4 +1,4 @@
-A class to plot speedometer (and gauge) plots
+A class to plot speedometer plots
 
 
 ### Installation
@@ -26,20 +26,20 @@ import themepy
 theme = themepy.Theme('dark')
 plt.rcParams['axes.grid'] = False
             
-fig, ax = plt.subplots(1, 3, figsize=(16, 4))
+fig, ax = plt.subplots(1, 2, figsize=(8, 4))
 
 
-plt.sca(ax[0])
-Speedometer(center=(0, 0),
+speedo = Speedometer(center=(0, 0),
             start_value = 7.5,
             end_value = 10,
             value = 9.,
+            radius=7.4,
             label_fontsize=5,
-            annotation_fontsize=12)
+            annotation_fontsize=12,
+            ax=ax[0])
 
-plt.sca(ax[1])
 Speedometer(center=(0, 0),
-            radius=3,
+            radius=5,
             start_value = 7.5,
             end_value = 10,
             value = 8.,
@@ -54,27 +54,8 @@ Speedometer(center=(0, 0),
             annotation_offset=0.5,
             start_angle=0,
             unit='m/s',
-            end_angle=180
-            )
-
-plt.sca(ax[2])
-Speedometer(center=(0, 0),
-            start_value = .5,
-            end_value = 5.5,
-            value = 1,
-            annotation_fontsize=16,
-            segments_per_color=1,
-            patch_lw=1,
-            radius=5,
-            title='Gauge',
-            draw_labels=True,
-            start_angle=-75,
-            end_angle=255,
-            title_offset=1.2,
-            annotation_offset=1.2,
-            rotate_labels=False,
-            annotation_text='Speed',
-            labels=['slowest', 'slow', 'avg', 'fast', 'fastest']
+            end_angle=180,
+            ax=ax[1]
             )
 
 for ax_ in ax:
